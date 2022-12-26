@@ -1,0 +1,3 @@
+[submodule "genmsg"]
+	path = genmsg
+	url = git@github.com:Pickle-Robot/genmsg.git

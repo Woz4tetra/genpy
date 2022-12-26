@@ -2,3 +2,5 @@
 ._*
 *~
 src/genpy/msg
+src/genpy.egg-info/
+env/
