@@ -497,7 +497,7 @@ def _fill_val(msg, f, v, keys, prefix):
         # determine base_type of field by looking at _slot_types
         idx = msg.__slots__.index(f)
         t = msg._slot_types[idx]
-        base_type, is_array, length = genmsg.msgs.parse_type(t)
+        base_type, is_array, length, is_optional = genmsg.msgs.parse_type(t)
         # - for primitives, we just directly set (we don't
         #   type-check. we rely on serialization type checker)
         if base_type in genmsg.msgs.PRIMITIVE_TYPES:

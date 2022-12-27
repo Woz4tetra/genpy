@@ -174,7 +174,7 @@ def default_value(msg_context, field_type, default_package):
     elif field_type == 'bool':
         return 'False'
     elif field_type.endswith(']'):  # array type
-        base_type, is_array, array_len = genmsg.msgs.parse_type(field_type)
+        base_type, is_array, array_len, is_optional = genmsg.msgs.parse_type(field_type)
         if base_type in ['char', 'uint8']:
             # strings, char[], and uint8s are all optimized to be strings
             if array_len is not None:
@@ -211,7 +211,7 @@ def flatten(msg_context, msg):
     new_names = []
     for t, n in zip(msg.types, msg.names):
         # Parse type to make sure we don't flatten an array
-        msg_type, is_array, _ = genmsg.msgs.parse_type(t)
+        msg_type, is_array, _, is_optional = genmsg.msgs.parse_type(t)
         # flatten embedded types - note: bug #59
         if not is_array and msg_context.is_registered(t):
             msg_spec = flatten(msg_context, msg_context.get_registered(t))
@@ -460,7 +460,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
 
     # the length generator is a noop if serialize is True as we
     # optimize the serialization call.
-    base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
+    base_type, is_array, array_len, is_optional = genmsg.msgs.parse_type(type_)
     # - don't serialize length for fixed-length arrays of bytes
     if base_type not in ['uint8', 'char'] or array_len is None:
         for y in len_serializer_generator(var, True, serialize):
@@ -470,7 +470,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
         # serialize length and string together
 
         # check to see if its a uint8/byte type, in which case we need to convert to string before serializing
-        base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
+        base_type, is_array, array_len, is_optional = genmsg.msgs.parse_type(type_)
         if base_type in ['uint8', 'char']:
             yield '# - if encoded as a list instead, serialize as bytes instead of string'
             if array_len is None:
@@ -491,6 +491,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
 
             yield pack2("'<I%ss'%length", 'length, %s' % var)
     else:
+        # Consider optional case...
         yield 'start = end'
         if array_len is not None:
             yield 'end += %s' % array_len
@@ -512,7 +513,7 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
 
     :raises: :exc:`MsgGenerationException` If array spec is invalid
     """
-    base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
+    base_type, is_array, array_len, is_optional = genmsg.msgs.parse_type(type_)
     if not is_array:
         raise MsgGenerationException('Invalid array spec: %s' % type_)
     var_length = array_len is None
@@ -622,7 +623,7 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
     # brackets, then we check for the 'complex' builtin types (string,
     # time, duration, Header), then we canonicalize it to an embedded
     # message type.
-    _, is_array, _ = genmsg.msgs.parse_type(type_)
+    _, is_array, _, is_optional = genmsg.msgs.parse_type(type_)
 
     # Array
     if is_array:
@@ -677,6 +678,7 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
     else:
         yield 'start = end'
         yield 'end += %s' % struct.calcsize('<%s' % reduce_pattern(pattern))
+        # Optional unpacking needs to be added here
         yield unpack('(%s,)' % vars_, pattern, 'str[start:end]')
 
         # convert uint8 to bool. this doesn't add much value as Python
@@ -747,6 +749,10 @@ def serialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     # #3741: make sure to have sub-messages python safe
     flattened = make_python_safe(flatten(msg_context, spec))
     for y in serializer_generator(msg_context, flattened, True, is_numpy):
+        # The yeilded y should include a prefix flag if the field is optional
+        # 'buff.write(_get_struct_3f().pack(*self.optional_float_array))' should be ....
+        #   buff.write(_get_struct_<boolean>().pack(<true if self.optional_float_array is not none >)
+        #   buff.write(_get_struct_3f().pack(*self.optional_float_array if self.optional_float_array else "ALL ZEROS" ))'
         yield '  '+y
     pop_context()
     yield "except struct.error as se: self._check_types(struct.error(\"%s: '%s' when writing '%s'\" % (type(se), str(se), str(locals().get('_x', self)))))"
@@ -777,6 +783,7 @@ def deserialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     # NOTE: we flatten the spec for optimal serialization
     # #3741: make sure to have sub-messages python safe
     flattened = make_python_safe(flatten(msg_context, spec))
+    # The false flag tells us to deserialize
     for y in serializer_generator(msg_context, flattened, False, is_numpy):
         yield '  '+y
     pop_context()
@@ -854,10 +861,15 @@ def msg_generator(msg_context, spec, search_path):
         full_text = full_text[:-1] + r'\"'
     yield '  _full_text: str = """%s"""' % full_text
 
-    fields = generate_fields(spec_names, spec.types)
+    required_fields, optional_fields = generate_fields(spec_names, spec.types)
+    is_optional_fields = [False]*len(required_fields) + [True]*len(optional_fields)
+    fields = required_fields + optional_fields
+
     fields_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
-    for feild in fields:
+    for feild, is_optional, spec_name in zip(fields, is_optional_fields, spec_names):
         yield f'  {feild}'
+        if is_optional:
+            yield f'  _opt_{spec_name}_defined: bool'
     
     if spec.constants:
         yield '  # Pseudo-constants'
@@ -904,9 +916,12 @@ def msg_generator(msg_context, spec, search_path):
     super(%s, self).__init__(%s)""" % (', '.join(fields), ','.join(spec_names), name,  fields_dict)
     if len(spec_names):
         yield '    # message fields cannot be None, assign default values for those that are'
-        for (t, s) in zip(spec.types, spec_names):
-            yield '    if self.%s is None:' % s
-            yield '      self.%s = %s' % (s, default_value(msg_context, t, spec.package))
+
+        for (spec_type, spec_name, spec_is_optional) in zip(spec.types, spec_names, is_optional_fields):
+            yield '    if self.%s is None:' % spec_name
+            if spec_is_optional:
+                yield f'      self._opt_{spec_name}_defined = False'
+            yield '      self.%s = %s' % (spec_name, default_value(msg_context, spec_type, spec.package))
     yield """
   def _get_types(self):
     \"\"\"
