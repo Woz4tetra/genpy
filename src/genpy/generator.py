@@ -68,7 +68,7 @@ from genmsg.base import log
 
 from . base import SIMPLE_TYPES  # noqa: F401
 from . base import is_simple
-from . generate_feilds import generate_feilds
+from . generate_fields import generate_fields
 from . generate_numpy import NUMPY_DTYPE
 from . generate_numpy import pack_numpy
 from . generate_numpy import unpack_numpy
@@ -854,9 +854,9 @@ def msg_generator(msg_context, spec, search_path):
         full_text = full_text[:-1] + r'\"'
     yield '  _full_text: str = """%s"""' % full_text
 
-    feilds = generate_feilds(spec_names, spec.types)
-    feilds_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
-    for feild in feilds:
+    fields = generate_fields(spec_names, spec.types)
+    fields_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
+    for feild in fields:
         yield f'  {feild}'
     
     if spec.constants:
@@ -901,7 +901,7 @@ def msg_generator(msg_context, spec, search_path):
     :param kwds: use keyword arguments corresponding to message field names
     to set specific fields.
     \"\"\"
-    super(%s, self).__init__(%s)""" % (', '.join(feilds), ','.join(spec_names), name,  feilds_dict)
+    super(%s, self).__init__(%s)""" % (', '.join(fields), ','.join(spec_names), name,  fields_dict)
     if len(spec_names):
         yield '    # message fields cannot be None, assign default values for those that are'
         for (t, s) in zip(spec.types, spec_names):
