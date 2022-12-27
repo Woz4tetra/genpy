@@ -1,0 +1,1 @@
+Optional[float32[3]] optional_float_array
