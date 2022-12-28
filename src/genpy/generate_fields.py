@@ -4,10 +4,8 @@ from typing import List, Tuple
 
 import genmsg
 
-# TODO pull this out into seperate function
-# TODO verify these are sensible and msg_type->py_type never loses information 
-# ... what makes sense for unsigned ints?
-# Consult https://docs.python.org/3/library/struct.html#format-characters
+
+# REF https://docs.python.org/3/library/struct.html#format-characters
 PY_TYPE_STRINGS = {
     'int8': 'int',
     'uint8': 'int',
@@ -21,10 +19,9 @@ PY_TYPE_STRINGS = {
     'string': 'bytes', # ??? TODO char[]
     'bool': 'bool',
     'char': 'bytes', # ?
-    'time': 'Tuple[int, int]'       , # See: https://github.com/Pickle-Robot/genmsg/blob/b3c24ea4a75ac494e4f94bf88e8838c71f4280a5/src/genmsg/msgs.py#L326
+    'time': 'Tuple[int, int]', # See: https://github.com/Pickle-Robot/genmsg/blob/b3c24ea4a75ac494e4f94bf88e8838c71f4280a5/src/genmsg/msgs.py#L326
     'duration': 'Tuple[int, int]' 
 }
-
 
 def generate_fields(spec_names: List[str], spec_types: List[str] ) -> Tuple[List[str], List[str]]:
     feild_definitions: List[str] = []
@@ -49,8 +46,8 @@ def generate_fields(spec_names: List[str], spec_types: List[str] ) -> Tuple[List
             format_spec_type_hint = base_type
         
         if is_optional:
-            optional_feild_definitions.append(f'{spec_name}: Optional[{format_spec_type_hint}]')
+            optional_feild_definitions.append((spec_name, spec_type,f'{spec_name}: Optional[{format_spec_type_hint}]'))
         else:
-            feild_definitions.append(f'{spec_name}: {format_spec_type_hint}')
+            feild_definitions.append((spec_name, spec_type, f'{spec_name}: {format_spec_type_hint}'))
 
     return (feild_definitions, optional_feild_definitions)

@@ -5,10 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: Generate Test Messages",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "/home/neil/src/pickle/genpy/test/msg/generate_test_messages.py",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": false
         }

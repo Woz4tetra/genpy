@@ -435,7 +435,7 @@ def len_serializer_generator(var, is_string, serialize):  # noqa: D401
             yield int32_pack('length')
     else:
         yield 'start = end'
-        yield 'end += 4'
+        yield 'end += 4 # tag11'
         yield int32_unpack('length', 'str[start:end]')  # 4 = struct.calcsize('<i')
 
 
@@ -449,6 +449,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
     :param serialize: if ``True``, generate code for
       serialization. Other, generate code for deserialization, ``bool``
     """
+    yield f'##### start string_serializer_generator {name} : {type_} #########'
     # don't optimize in deserialization case as assignment doesn't
     # work
     if _serial_context and serialize:
@@ -494,10 +495,10 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
         # Consider optional case...
         yield 'start = end'
         if array_len is not None:
-            yield 'end += %s' % array_len
+            yield 'end += %s  #tag6' % array_len
             yield '%s = str[start:end]' % var
         else:
-            yield 'end += length'
+            yield 'end += length # tag5'
             if base_type in ['uint8', 'char']:
                 yield '%s = str[start:end]' % (var)
             else:
@@ -505,14 +506,17 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
                 yield INDENT+"%s = str[start:end].decode('utf-8', 'rosmsg')" % (var)  # If messages are python3-decode back to unicode
                 yield 'else:'
                 yield INDENT+'%s = str[start:end]' % (var)
+    yield f'##### end string_serializer_generator {name} : {type_} #########'
 
 
-def array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):  # noqa: D401
+def array_serializer_generator(msg_context: MsgSpec, package, type_, name, serialize, is_numpy):  # noqa: D401
     """
     Generator for array types.
 
     :raises: :exc:`MsgGenerationException` If array spec is invalid
     """
+    yield f'##### start array_serializer_generator {name} : [{type_}] #########'
+
     base_type, is_array, array_len, is_optional = genmsg.msgs.parse_type(type_)
     if not is_array:
         raise MsgGenerationException('Invalid array spec: %s' % type_)
@@ -547,7 +551,7 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
             else:
                 yield 'start = end'
                 yield 's = struct.Struct(pattern)'
-                yield 'end += s.size'
+                yield 'end += s.size # tag8'
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
                     yield unpack_numpy(var, 'length', dtype, 'str[start:end]')
@@ -562,7 +566,7 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
                     yield pack(pattern, '*'+var)
             else:
                 yield 'start = end'
-                yield 'end += %s' % struct.calcsize('<%s' % pattern)
+                yield 'end += %s # tag9' % struct.calcsize('<%s' % pattern)
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
                     yield unpack_numpy(var, length, dtype, 'str[start:end]')
@@ -607,6 +611,8 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
             yield INDENT + '%s.append(%s)' % (var, loop_var)
         pop_context()
 
+    yield f'##### end array_serializer_generator {name} :  [{type_}] #########'
+
 
 def complex_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):  # noqa: D401
     """
@@ -618,6 +624,8 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
       datatypes instead of Python lists, ``bool``
     :raises: MsgGenerationException If type is not a valid
     """
+    yield f'##### start complex_serializer_generator {name} : {type_} #########'
+
     # ordering of these statements is important as we mutate the type
     # string we are checking throughout. parse_type strips array
     # brackets, then we check for the 'complex' builtin types (string,
@@ -626,13 +634,27 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
     _, is_array, _, is_optional = genmsg.msgs.parse_type(type_)
 
     # Array
+
+    # if optiontional is included is it automatically a complexe type
+    OPTIONAL_INDENT = ''
+    if serialize and is_optional:
+        OPTIONAL_INDENT = INDENT
+        yield pack(compute_struct_pattern(['bool']), f'False if self.{name} is None else True') + ' # tag7'
+        yield 'if self.optional_float_array is not None:'
+
+    if serialize == False and is_optional:
+        OPTIONAL_INDENT = INDENT
+        yield 'end += 4'
+        yield '(_optional_defined,) = _get_struct_B().unpack(str[start:end])'
+        yield 'if _optional_defined:'
+
     if is_array:
         for y in array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):
-            yield y
+            yield OPTIONAL_INDENT + y
     # Embedded Message
     elif type_ == 'string':
         for y in string_serializer_generator(package, type_, name, serialize):
-            yield y
+            yield  OPTIONAL_INDENT + y
     else:
         if not is_special(type_):
             # canonicalize type
@@ -641,17 +663,17 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
         if msg_context.is_registered(type_):
             # descend data structure ####################
             ctx_var = next_var()
-            yield '%s = %s' % (ctx_var, _serial_context+name)
+            yield  OPTIONAL_INDENT + '%s = %s' % (ctx_var, _serial_context+name)
             push_context(ctx_var+'.')
             # unoptimized code
             # push_context(_serial_context+name+'.')
             for y in serializer_generator(msg_context, make_python_safe(get_registered_ex(msg_context, type_)), serialize, is_numpy):
-                yield y  # recurs on subtype
+                yield  OPTIONAL_INDENT + y  # recurs on subtype
             pop_context()
         else:
             # Invalid
             raise MsgGenerationException('Unknown type: %s. Package context is %s' % (type_, package))
-
+    yield f'##### end complex_serializer_generator {name} : {type_} #########'
 
 # primitives that can be handled with struct
 def simple_serializer_generator(msg_context, spec, start, end, serialize):  # noqa: D401
@@ -662,6 +684,7 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
     :param start: first field to serialize, ``int``
     :param end: last field to serialize, ``int``
     """
+    yield f'##### start simple_serializer_generator #########'
     # optimize member var access
     if end - start > 1 and _serial_context.endswith('.'):
         yield '_x = '+_serial_context[:-1]
@@ -677,7 +700,7 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
         yield pack(pattern, vars_)
     else:
         yield 'start = end'
-        yield 'end += %s' % struct.calcsize('<%s' % reduce_pattern(pattern))
+        yield 'end += %s # tag010' % struct.calcsize('<%s' % reduce_pattern(pattern))
         # Optional unpacking needs to be added here
         yield unpack('(%s,)' % vars_, pattern, 'str[start:end]')
 
@@ -689,6 +712,8 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
             # TODO: could optimize this as well
             var = _serial_context+f
             yield '%s = bool(%s)' % (var, var)
+    yield f'##### end simple_serializer_generator #########'
+    
 
 
 def serializer_generator(msg_context, spec, serialize, is_numpy):  # noqa: D401
@@ -749,11 +774,7 @@ def serialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     # #3741: make sure to have sub-messages python safe
     flattened = make_python_safe(flatten(msg_context, spec))
     for y in serializer_generator(msg_context, flattened, True, is_numpy):
-        # The yeilded y should include a prefix flag if the field is optional
-        # 'buff.write(_get_struct_3f().pack(*self.optional_float_array))' should be ....
-        #   buff.write(_get_struct_<boolean>().pack(<true if self.optional_float_array is not none >)
-        #   buff.write(_get_struct_3f().pack(*self.optional_float_array if self.optional_float_array else "ALL ZEROS" ))'
-        yield '  '+y
+        yield INDENT+y
     pop_context()
     yield "except struct.error as se: self._check_types(struct.error(\"%s: '%s' when writing '%s'\" % (type(se), str(se), str(locals().get('_x', self)))))"
     yield "except TypeError as te: self._check_types(ValueError(\"%s: '%s' when writing '%s'\" % (type(te), str(te), str(locals().get('_x', self)))))"
@@ -771,11 +792,11 @@ def deserialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     yield INDENT+'codecs.lookup_error("rosmsg").msg_type = self._type'
     yield 'try:'
     package = spec.package
-    # Instantiate embedded type classes
+    yield '# Instantiate embedded type classes'
     for type_, name in spec.fields():
         if msg_context.is_registered(type_):
-            yield '  if self.%s is None:' % name
-            yield '    self.%s = %s' % (name, compute_constructor(msg_context, package, type_))
+            yield '  if self.%s is None: # tag3' % name
+            yield '    self.%s = %s#tag4' % (name, compute_constructor(msg_context, package, type_))
     yield '  end = 0'  # initialize var
 
     # method-var context #########
@@ -862,14 +883,18 @@ def msg_generator(msg_context, spec, search_path):
     yield '  _full_text: str = """%s"""' % full_text
 
     required_fields, optional_fields = generate_fields(spec_names, spec.types)
+    # At this point we need to reorder spec.names and spec types to represent this change
+    
     is_optional_fields = [False]*len(required_fields) + [True]*len(optional_fields)
+    feild_definitions = [field_definition for _,_, field_definition in required_fields] + [field_definition for _,_, field_definition in optional_fields]
     fields = required_fields + optional_fields
 
+
     fields_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
-    for feild, is_optional, spec_name in zip(fields, is_optional_fields, spec_names):
-        yield f'  {feild}'
-        if is_optional:
-            yield f'  _opt_{spec_name}_defined: bool'
+    for feild, is_optional in zip(fields, is_optional_fields):
+        spec_name, spec_type, feild_definition = feild
+        yield f'  {feild_definition}'
+
     
     if spec.constants:
         yield '  # Pseudo-constants'
@@ -913,15 +938,18 @@ def msg_generator(msg_context, spec, search_path):
     :param kwds: use keyword arguments corresponding to message field names
     to set specific fields.
     \"\"\"
-    super(%s, self).__init__(%s)""" % (', '.join(fields), ','.join(spec_names), name,  fields_dict)
+    super(%s, self).__init__(%s)""" % (', '.join([f'{field_definition} = None' for field_definition in feild_definitions]), ','.join(spec_names), name,  fields_dict)
+    # ^ TODO the above should use defualt values not = None. LEaving as is for the moment until everything is working
     if len(spec_names):
         yield '    # message fields cannot be None, assign default values for those that are'
 
-        for (spec_type, spec_name, spec_is_optional) in zip(spec.types, spec_names, is_optional_fields):
+        for (field, spec_is_optional) in zip(fields, is_optional_fields):
+            spec_name, spec_type, _ = field
             yield '    if self.%s is None:' % spec_name
             if spec_is_optional:
-                yield f'      self._opt_{spec_name}_defined = False'
-            yield '      self.%s = %s' % (spec_name, default_value(msg_context, spec_type, spec.package))
+                yield INDENT*3 + 'self.%s = None #tag2' % (spec_name)
+            else:
+                yield INDENT*3 + 'self.%s = %s' % (spec_name, default_value(msg_context, spec_type, spec.package))
     yield """
   def _get_types(self):
     \"\"\"
@@ -929,7 +957,7 @@ def msg_generator(msg_context, spec, search_path):
     \"\"\"
     return self._slot_types
 
-  def serialize(self, buff: StringIO) -> StringIO:
+  def serialize(self, buff: StringIO) -> None:
     \"\"\"
     serialize message into buffer
     :param buff: buffer, ``StringIO``
@@ -937,11 +965,11 @@ def msg_generator(msg_context, spec, search_path):
     for y in serialize_fn_generator(msg_context, spec):
         yield '    ' + y
     yield """
-  def deserialize(self, str: str) -> str:
+  def deserialize(self, str: str) -> \'%s\':
     \"\"\"
     unpack serialized message in str into this message instance
     :param str: byte array of serialized message, ``str``
-    \"\"\""""
+    \"\"\"""" %  spec.short_name
     for y in deserialize_fn_generator(msg_context, spec):
         yield '    ' + y
     yield ''
@@ -978,7 +1006,7 @@ def msg_generator(msg_context, spec, search_path):
         if p == 'I':
             continue
         var_name = '_struct_%s' % (p.replace('<', ''))
-        yield '%s = None' % var_name
+        yield '%s = None #tag1 ' % var_name
         yield 'def _get%s():' % var_name
         yield '    global %s' % var_name
         yield '    if %s is None:' % var_name
