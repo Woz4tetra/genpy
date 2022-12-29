@@ -625,10 +625,10 @@ def optional_serializer_generator(msg_context, package, type_, name, serialize, 
     
     # handle fixed-size byte arrays could be slightly more efficient
     # as we recalculated the length in the generated code.
-    if base_type in ['char', 'uint8']:  # treat unsigned int8 arrays as string type
-        for y in string_serializer_generator(package, type_, name, serialize):
-            yield y
-        return
+    # if base_type in ['char', 'uint8']:  # treat unsigned int8 arrays as string type
+    #     for y in string_serializer_generator(package, type_, name, serialize):
+    #         yield y
+    #     return
 
     if serialize: 
         yield pack(compute_struct_pattern(['bool']), f'False if self.{name} is None else True') + ' # tag7'
@@ -663,16 +663,40 @@ def optional_serializer_generator(msg_context, package, type_, name, serialize, 
                 yield INDENT + y
 
     # Deserialization
-    if serialize == False:
+    else:
         yield 'end += 4'
         yield '(_optional_defined,) = _get_struct_B().unpack(str[start:end])'
-        yield 'if _optional_defined:'
+        yield  'if _optional_defined:'
 
         # for y in complex_serializer_generator(msg_context, package, base_type, name, serialize, is_numpy):
         #     yield INDENT + y
 
         # yield 'else:'
         # yield INDENT + f'self.{name} = None'
+
+
+        if is_array:
+            if array_len == 0:
+                base_type = base_type + '[]'
+            else:
+                base_type = base_type + f'[{array_len}]'
+
+            for y in array_serializer_generator(msg_context, package, base_type, name, serialize, is_numpy):
+                yield INDENT + y
+
+        elif is_simple(base_type):
+            pattern = compute_struct_pattern([base_type])
+            yield INDENT + 'start = end'
+            yield INDENT + f's = struct.Struct({pattern})'
+            yield INDENT + 'end += s.size # tag8.1'
+            if is_numpy:
+                dtype = NUMPY_DTYPE[base_type]
+                yield INDENT + unpack_numpy(var, 'length', dtype, 'str[start:end]')
+            else:
+                yield INDENT + unpack3(var, 's', 'str[start:end]')
+        else:    
+            for y in complex_serializer_generator(msg_context, package, base_type, name, serialize, is_numpy):
+                yield INDENT + y
 
     yield f'##### end optional_serializer_generator {name} : {type_} #########'
     
