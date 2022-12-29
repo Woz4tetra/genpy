@@ -71,7 +71,6 @@ except ImportError:
 # would better placed in a generator-specific module, we don't want to
 # add another import to messages (which incurs higher import cost)
 struct_I = struct.Struct('<I')
-struct_I = struct.Struct('<?')
 
 _warned_decoding_error = set()
 
