@@ -212,8 +212,11 @@ def flatten(msg_context, msg):
     for t, n in zip(msg.types, msg.names):
         # Parse type to make sure we don't flatten an array
         msg_type, is_array, _, is_optional = genmsg.msgs.parse_type(t)
+        ## THIS IS WHERE THINGS ARE NOT WORKING .data is coming from
+
         # flatten embedded types - note: bug #59
-        if not is_array and msg_context.is_registered(t):
+        # TODO wcan we flatten an optional
+        if not is_array and not is_optional and msg_context.is_registered(t):
             msg_spec = flatten(msg_context, msg_context.get_registered(t))
             new_types.extend(msg_spec.types)
             for n2 in msg_spec.names:
@@ -226,7 +229,7 @@ def flatten(msg_context, msg):
     return MsgSpec(new_types, new_names, msg.constants, msg.text, msg.full_name)
 
 
-def make_python_safe(spec):
+def make_python_safe(spec) -> MsgSpec:
     """
     Remap field/constant names in spec to avoid collision with Python reserved words.
 
@@ -613,6 +616,68 @@ def array_serializer_generator(msg_context: MsgSpec, package, type_, name, seria
 
     yield f'##### end array_serializer_generator {name} :  [{type_}] #########'
 
+def optional_serializer_generator(msg_context, package, type_, name, serialize, is_numpy): # noqa: D401
+    yield f'##### start optional_serializer_generator {name} : {type_} #########'
+    
+    base_type, is_array, array_len, is_optional = genmsg.msgs.parse_type(type_)
+    
+    var = _serial_context+name
+    
+    # handle fixed-size byte arrays could be slightly more efficient
+    # as we recalculated the length in the generated code.
+    if base_type in ['char', 'uint8']:  # treat unsigned int8 arrays as string type
+        for y in string_serializer_generator(package, type_, name, serialize):
+            yield y
+        return
+
+    if serialize: 
+        yield pack(compute_struct_pattern(['bool']), f'False if self.{name} is None else True') + ' # tag7'
+        yield f'if {var} is not None:'
+
+        if is_array:
+            if array_len == 0:
+                base_type = base_type + '[]'
+            else:
+                base_type = base_type + f'[{array_len}]'
+
+            for y in array_serializer_generator(msg_context, package, base_type, name, serialize, is_numpy):
+                yield INDENT + y
+
+        elif is_simple(base_type):
+            pattern = compute_struct_pattern([base_type])
+            if serialize:
+                if is_numpy:
+                    yield  INDENT + pack_numpy(var)
+                else:
+                    yield  INDENT + pack(pattern, '*'+var)
+            else:
+                yield 'start = end'
+                yield 'end += %s # tag9' % struct.calcsize('<%s' % pattern)
+                # if is_numpy:
+                #     dtype = NUMPY_DTYPE[base_type]
+                #     yield unpack_numpy(var, length, dtype, 'str[start:end]')
+                # else:
+                #     yield unpack(var, pattern, 'str[start:end]')
+        else:    
+            for y in complex_serializer_generator(msg_context, package, base_type, name, serialize, is_numpy):
+                yield INDENT + y
+
+    # Deserialization
+    if serialize == False:
+        yield 'end += 4'
+        yield '(_optional_defined,) = _get_struct_B().unpack(str[start:end])'
+        yield 'if _optional_defined:'
+
+        # for y in complex_serializer_generator(msg_context, package, base_type, name, serialize, is_numpy):
+        #     yield INDENT + y
+
+        # yield 'else:'
+        # yield INDENT + f'self.{name} = None'
+
+    yield f'##### end optional_serializer_generator {name} : {type_} #########'
+    
+
+
 
 def complex_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):  # noqa: D401
     """
@@ -631,30 +696,37 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
     # brackets, then we check for the 'complex' builtin types (string,
     # time, duration, Header), then we canonicalize it to an embedded
     # message type.
-    _, is_array, _, is_optional = genmsg.msgs.parse_type(type_)
+    base_type, is_array, _, is_optional = genmsg.msgs.parse_type(type_)
 
     # Array
 
-    # if optiontional is included is it automatically a complexe type
-    OPTIONAL_INDENT = ''
-    if serialize and is_optional:
-        OPTIONAL_INDENT = INDENT
-        yield pack(compute_struct_pattern(['bool']), f'False if self.{name} is None else True') + ' # tag7'
-        yield 'if self.optional_float_array is not None:'
+    # # if optiontional is included is it automatically a complexe type
+    # OPTIONAL_INDENT = ''
+    # if serialize and is_optional:
+    #     OPTIONAL_INDENT = INDENT
+    #     yield pack(compute_struct_pattern(['bool']), f'False if self.{name} is None else True') + ' # tag7'
+    #     yield 'if self.optional_float_array is not None:'
 
-    if serialize == False and is_optional:
-        OPTIONAL_INDENT = INDENT
-        yield 'end += 4'
-        yield '(_optional_defined,) = _get_struct_B().unpack(str[start:end])'
-        yield 'if _optional_defined:'
+    # if serialize == False and is_optional:
+    #     OPTIONAL_INDENT = INDENT
+    #     yield 'end += 4'
+    #     yield '(_optional_defined,) = _get_struct_B().unpack(str[start:end])'
+    #     yield 'if _optional_defined:'
 
-    if is_array:
+    print(f'Optional named {name} _ is_opt : {is_optional} ---- base {base_type}')
+    if is_optional:
+        print(f'Optional named {name}')
+        for y in optional_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):
+            yield y
+    elif is_array:
         for y in array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):
-            yield OPTIONAL_INDENT + y
+            yield y
+            # yield OPTIONAL_INDENT + y
     # Embedded Message
     elif type_ == 'string':
         for y in string_serializer_generator(package, type_, name, serialize):
-            yield  OPTIONAL_INDENT + y
+            yield y
+            # yield  OPTIONAL_INDENT + y
     else:
         if not is_special(type_):
             # canonicalize type
@@ -663,20 +735,23 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
         if msg_context.is_registered(type_):
             # descend data structure ####################
             ctx_var = next_var()
-            yield  OPTIONAL_INDENT + '%s = %s' % (ctx_var, _serial_context+name)
+            yield '%s = %s' % (ctx_var, _serial_context+name)
+
+            # yield  OPTIONAL_INDENT + '%s = %s' % (ctx_var, _serial_context+name)
             push_context(ctx_var+'.')
             # unoptimized code
             # push_context(_serial_context+name+'.')
             for y in serializer_generator(msg_context, make_python_safe(get_registered_ex(msg_context, type_)), serialize, is_numpy):
-                yield  OPTIONAL_INDENT + y  # recurs on subtype
+                yield  y  # recurs on subtype
+                # yield  OPTIONAL_INDENT + y  # recurs on subtype
             pop_context()
         else:
             # Invalid
             raise MsgGenerationException('Unknown type: %s. Package context is %s' % (type_, package))
 
-    if serialize == False and is_optional:
-        yield 'else:'
-        yield INDENT + f'self.{name} = None'
+    # if serialize == False and is_optional:
+    #     yield 'else:'
+    #     yield INDENT + f'self.{name} = None'
 
     yield f'##### end complex_serializer_generator {name} : {type_} #########'
 
@@ -749,6 +824,7 @@ def serializer_generator(msg_context, spec, serialize, is_numpy):  # noqa: D401
     # then, then yield the complex type serializer
     curr = 0
     for (i, full_type) in enumerate(types):
+        # Optional should probably be handled here? .. .maybe not maybe it should done exactly like arrays
         if not is_simple(full_type):
             if i != curr:  # yield chunk of simples
                 for _start in range(curr, i, _max_chunk):
@@ -776,7 +852,7 @@ def serialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     yield 'try:'
     push_context('self.')
     # NOTE: we flatten the spec for optimal serialization
-    # #3741: make sure to have sub-messages python safe
+    # #3741: make sure to have sub-messages python safe (ie escape feild names a used by python (e.g. def, from, ...))
     flattened = make_python_safe(flatten(msg_context, spec))
     for y in serializer_generator(msg_context, flattened, True, is_numpy):
         yield INDENT+y
