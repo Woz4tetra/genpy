@@ -673,6 +673,11 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
         else:
             # Invalid
             raise MsgGenerationException('Unknown type: %s. Package context is %s' % (type_, package))
+
+    if serialize == False and is_optional:
+        yield 'else:'
+        yield INDENT + f'self.{name} = None'
+
     yield f'##### end complex_serializer_generator {name} : {type_} #########'
 
 # primitives that can be handled with struct
