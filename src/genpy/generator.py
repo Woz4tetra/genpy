@@ -676,7 +676,7 @@ def optional_serializer_generator(msg_context, package, type_, name, serialize, 
 
 
         if is_array:
-            if array_len == 0:
+            if array_len == 0 or array_len is None:
                 base_type = base_type + '[]'
             else:
                 base_type = base_type + f'[{array_len}]'
