@@ -4,3 +4,5 @@
 src/genpy/msg
 src/genpy.egg-info/
 env/
+test/msg/dill_rospy_msgs/
+test/msg/ros_msgs/
