@@ -451,7 +451,6 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
     :param serialize: if ``True``, generate code for
       serialization. Other, generate code for deserialization, ``bool``
     """
-    yield f'##### start string_serializer_generator {name} : {type_} #########'
     # don't optimize in deserialization case as assignment doesn't
     # work
     if _serial_context and serialize:
@@ -496,10 +495,10 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
     else:
         yield 'start = end'
         if array_len is not None:
-            yield 'end += %s  #tag6' % array_len
+            yield 'end += %s' % array_len
             yield '%s = str[start:end]' % var
         else:
-            yield 'end += length # tag5'
+            yield 'end += length'
             if base_type in ['uint8', 'char']:
                 yield '%s = str[start:end]' % (var)
             else:
@@ -507,7 +506,6 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
                 yield INDENT+"%s = str[start:end].decode('utf-8', 'rosmsg')" % (var)  # If messages are python3-decode back to unicode
                 yield 'else:'
                 yield INDENT+'%s = str[start:end]' % (var)
-    yield f'##### end string_serializer_generator {name} : {type_} #########'
 
 
 def array_serializer_generator(msg_context: MsgSpec, package, type_, name, serialize, is_numpy):  # noqa: D401
@@ -516,7 +514,6 @@ def array_serializer_generator(msg_context: MsgSpec, package, type_, name, seria
 
     :raises: :exc:`MsgGenerationException` If array spec is invalid
     """
-    yield f'##### start array_serializer_generator {name} : [{type_}] #########'
 
     base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
     if not is_array:
@@ -612,8 +609,6 @@ def array_serializer_generator(msg_context: MsgSpec, package, type_, name, seria
             yield INDENT + '%s.append(%s)' % (var, loop_var)
         pop_context()
 
-    yield f'##### end array_serializer_generator {name} :  [{type_}] #########'
-
 
 def complex_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):  # noqa: D401
     """
@@ -625,8 +620,6 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
       datatypes instead of Python lists, ``bool``
     :raises: MsgGenerationException If type is not a valid
     """
-    yield f'##### start complex_serializer_generator {name} : {type_} #########'
-
     # ordering of these statements is important as we mutate the type
     # string we are checking throughout. parse_type strips array
     # brackets, then we check for the 'complex' builtin types (string,
@@ -661,8 +654,6 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
             # Invalid
             raise MsgGenerationException('Unknown type: %s. Package context is %s' % (type_, package))
 
-    yield f'##### end complex_serializer_generator {name} : {type_} #########'
-
 # primitives that can be handled with struct
 def simple_serializer_generator(msg_context, spec, start, end, serialize):  # noqa: D401
     """
@@ -672,7 +663,6 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
     :param start: first field to serialize, ``int``
     :param end: last field to serialize, ``int``
     """
-    yield f'##### start simple_serializer_generator #########'
     # optimize member var access
     if end - start > 1 and _serial_context.endswith('.'):
         yield '_x = '+_serial_context[:-1]
@@ -699,7 +689,6 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
             # TODO: could optimize this as well
             var = _serial_context+f
             yield '%s = bool(%s)' % (var, var)
-    yield f'##### end simple_serializer_generator #########'
     
 
 
@@ -782,8 +771,8 @@ def deserialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     yield '# Instantiate embedded type classes'
     for type_, name in spec.fields():
         if msg_context.is_registered(type_):
-            yield '  if self.%s is None: # tag3' % name
-            yield '    self.%s = %s#tag4' % (name, compute_constructor(msg_context, package, type_))
+            yield '  if self.%s is None:' % name
+            yield '    self.%s = %s' % (name, compute_constructor(msg_context, package, type_))
     yield '  end = 0'  # initialize var
 
     # method-var context #########
@@ -990,7 +979,7 @@ def msg_generator(msg_context, spec, search_path):
         if p == 'I':
             continue
         var_name = '_struct_%s' % (p.replace('<', ''))
-        yield '%s = None #tag1 ' % var_name
+        yield '%s = None' % var_name
         yield 'def _get%s():' % var_name
         yield '    global %s' % var_name
         yield '    if %s is None:' % var_name
