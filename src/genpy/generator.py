@@ -745,7 +745,7 @@ def serialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     yield 'try:'
     push_context('self.')
     # NOTE: we flatten the spec for optimal serialization
-    # #3741: make sure to have sub-messages python safe (ie escape feild names a used by python (e.g. def, from, ...))
+    # #3741: make sure to have sub-messages python safe (ie escape field names a used by python (e.g. def, from, ...))
     flattened = make_python_safe(flatten(msg_context, spec))
     for y in serializer_generator(msg_context, flattened, True, is_numpy):
         yield INDENT+y
@@ -857,17 +857,15 @@ def msg_generator(msg_context, spec, search_path):
         full_text = full_text[:-1] + r'\"'
     yield '  _full_text: str = """%s"""' % full_text
 
-    required_fields = generate_fields(spec_names, spec.types)
-    # At this point we need to reorder spec.names and spec types to represent this change
-    
-    feild_definitions = [field_definition for _,_, field_definition in required_fields]
-    fields = required_fields
-
-
+    fields = generate_fields(spec_names, spec.types)
+    field_definitions = list(map(lambda x: x[2], fields))
+    # Pass feilds as keyword args to super class. 
     fields_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
-    for feild in fields:
-        spec_name, spec_type, feild_definition = feild
-        yield f'  {feild_definition}'
+   
+    # TODO I'd perfer not do use the below commented lines since these can be class or instance vars which could be problemeatic
+    # for field in fields:
+    #     spec_name, spec_type, field_definition = field
+    #     yield f'  {field_definition}'
 
     
     if spec.constants:
@@ -898,7 +896,7 @@ def msg_generator(msg_context, spec, search_path):
         yield '  _slot_types: List[str] = []'
 
     yield f"""
-  def __init__(self, %s):
+  def __init__(self, {', '.join([f'{spec_name}: {format_spec_type_hint} = None' for spec_name, spec_type, format_spec_type_hint in fields])}):
     \"\"\"
     Constructor. Any message fields that are implicitly/explicitly
     set to None will be assigned a default value. The recommend
@@ -906,21 +904,21 @@ def msg_generator(msg_context, spec, search_path):
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       %s
+      {','.join(spec_names)}
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
     to set specific fields.
     \"\"\"
-    super(%s, self).__init__(**%s)""" % (', '.join([f'{field_definition} = None' for field_definition in feild_definitions]), ','.join(spec_names), name,  fields_dict)
+    super({name}, self).__init__(**{fields_dict})"""
     # ^ TODO the above should use defualt values not = None. LEaving as is for the moment until everything is working
     if len(spec_names):
         yield '    # message fields cannot be None, assign default values for those that are'
 
         for field in fields:
-            spec_name, spec_type, _ = field
+            spec_name, spec_type, format_spec_type_hint = field
             yield '    if self.%s is None:' % spec_name
-            yield INDENT*3 + 'self.%s = %s' % (spec_name, default_value(msg_context, spec_type, spec.package))
+            yield INDENT*3 + 'self.%s : %s = %s' % (spec_name, format_spec_type_hint, default_value(msg_context, spec_type, spec.package))
     yield """
   def _get_types(self):
     \"\"\"
@@ -930,7 +928,7 @@ def msg_generator(msg_context, spec, search_path):
 
   def serialize(self, buff: StringIO) -> None:
     \"\"\"
-    serialize message into buffer
+    serialize message into buffere
     :param buff: buffer, ``StringIO``
     \"\"\""""
     for y in serialize_fn_generator(msg_context, spec):

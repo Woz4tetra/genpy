@@ -16,15 +16,15 @@ PY_TYPE_STRINGS = {
     'uint64': 'int',
     'float32': 'float',
     'float64': 'float',
-    'string': 'bytes', # ??? TODO char[]
+    'string': 'bytes',
     'bool': 'bool',
-    'char': 'bytes', # ?
+    'char': 'bytes',
     'time': 'Tuple[int, int]', # See: https://github.com/Pickle-Robot/genmsg/blob/b3c24ea4a75ac494e4f94bf88e8838c71f4280a5/src/genmsg/msgs.py#L326
     'duration': 'Tuple[int, int]' 
 }
 
-def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[str]:
-    feild_definitions: List[str] = []
+def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[Tuple[str, str, str]]:
+    field_definitions: List[str] = []
     for spec_name, spec_type in zip(spec_names, spec_types):
 
         base_type, is_array, array_length = genmsg.msgs.parse_type(spec_type)
@@ -41,7 +41,6 @@ def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[str]:
             format_spec_type_hint = f'List[{base_type}]'
         else:
             format_spec_type_hint = base_type
+        field_definitions.append((spec_name, spec_type, format_spec_type_hint))
         
-        feild_definitions.append((spec_name, spec_type, f'{spec_name}: {format_spec_type_hint}'))
-
-    return feild_definitions
+    return field_definitions
