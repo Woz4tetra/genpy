@@ -26,7 +26,6 @@ def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[Tuple
 
         base_type, is_array, array_length = genmsg.msgs.parse_type(spec_type)
         if len(base_type.split('/')) > 1:
-            # base_type = base_type.translate(str.maketrans({'/': '.'}))
             base_type = '.'.join(base_type.split('/')[:-1]) + '.msg.' +  base_type.split('/')[-1]
         
         if base_type in PY_TYPE_STRINGS:
