@@ -638,7 +638,6 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
             # descend data structure ####################
             ctx_var = next_var()
             yield '%s = %s' % (ctx_var, _serial_context+name)
-
             push_context(ctx_var+'.')
             # unoptimized code
             # push_context(_serial_context+name+'.')
@@ -648,6 +647,7 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
         else:
             # Invalid
             raise MsgGenerationException('Unknown type: %s. Package context is %s' % (type_, package))
+
 
 # primitives that can be handled with struct
 def simple_serializer_generator(msg_context, spec, start, end, serialize):  # noqa: D401
@@ -684,7 +684,7 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
             # TODO: could optimize this as well
             var = _serial_context+f
             yield '%s = bool(%s)' % (var, var)
-    
+
 
 def serializer_generator(msg_context, spec, serialize, is_numpy):  # noqa: D401
     """
