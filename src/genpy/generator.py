@@ -339,7 +339,7 @@ def compute_import(msg_context, package, type_):
     elif not msg_context.is_registered(full_msg_type):
         retval = []
     else:
-        retval = ['import %s.msg # taga1' % pkg]
+        retval = ['import %s.msg' % pkg]
         iter_types = get_registered_ex(msg_context, full_msg_type).types
         for t in iter_types:
             assert t != full_msg_type, 'msg [%s] has circular self-dependencies' % (full_msg_type)
@@ -435,7 +435,7 @@ def len_serializer_generator(var, is_string, serialize):  # noqa: D401
             yield int32_pack('length')
     else:
         yield 'start = end'
-        yield 'end += 4 # tag11'
+        yield 'end += 4'
         yield int32_unpack('length', 'str[start:end]')  # 4 = struct.calcsize('<i')
 
 
@@ -547,7 +547,7 @@ def array_serializer_generator(msg_context: MsgSpec, package, type_, name, seria
             else:
                 yield 'start = end'
                 yield 's = struct.Struct(pattern)'
-                yield 'end += s.size # tag8'
+                yield 'end += s.size'
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
                     yield unpack_numpy(var, 'length', dtype, 'str[start:end]')
@@ -562,7 +562,7 @@ def array_serializer_generator(msg_context: MsgSpec, package, type_, name, seria
                     yield pack(pattern, '*'+var)
             else:
                 yield 'start = end'
-                yield 'end += %s # tag9' % struct.calcsize('<%s' % pattern)
+                yield 'end += %s' % struct.calcsize('<%s' % pattern)
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
                     yield unpack_numpy(var, length, dtype, 'str[start:end]')
@@ -676,7 +676,7 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
         yield pack(pattern, vars_)
     else:
         yield 'start = end'
-        yield 'end += %s # tag010' % struct.calcsize('<%s' % reduce_pattern(pattern))
+        yield 'end += %s' % struct.calcsize('<%s' % reduce_pattern(pattern))
         yield unpack('(%s,)' % vars_, pattern, 'str[start:end]')
 
         # convert uint8 to bool. this doesn't add much value as Python
