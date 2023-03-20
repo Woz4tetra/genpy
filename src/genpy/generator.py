@@ -212,8 +212,6 @@ def flatten(msg_context, msg):
     for t, n in zip(msg.types, msg.names):
         # Parse type to make sure we don't flatten an array
         msg_type, is_array, _ = genmsg.msgs.parse_type(t)
-        ## THIS IS WHERE THINGS ARE NOT WORKING .data is coming from
-
         # flatten embedded types - note: bug #59
         if not is_array and msg_context.is_registered(t):
             msg_spec = flatten(msg_context, msg_context.get_registered(t))
