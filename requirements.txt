@@ -4,8 +4,7 @@ catkin-pkg==0.5.2
 distro==1.8.0
 docutils==0.19
 exceptiongroup==1.1.0
--e git+ssh://git@github.com/Pickle-Robot/genmsg.git@83b7002e71e3fd848bec7a2fffbfbf35fc33d69a#egg=genmsg&subdirectory=../../genmsg
--e git+ssh://git@github.com/Pickle-Robot/genpy.git@42b75d68b551156b8dba8a99aed965dfff5ea1f0#egg=genpy
+git+https://git@github.com/ros/genmsg.git@7d8b6ce6f43b6e39ea8261125d270f2d3062356f#egg=genmsg
 iniconfig==1.1.1
 nose==1.3.7
 numpy==1.24.1
