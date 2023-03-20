@@ -64,8 +64,6 @@ from genmsg import MsgGenerationException
 from genmsg import MsgSpec
 from genmsg.base import log
 
-
-
 from . base import SIMPLE_TYPES  # noqa: F401
 from . base import is_simple
 from . generate_fields import generate_fields
@@ -226,7 +224,7 @@ def flatten(msg_context, msg):
     return MsgSpec(new_types, new_names, msg.constants, msg.text, msg.full_name)
 
 
-def make_python_safe(spec) -> MsgSpec:
+def make_python_safe(spec):
     """
     Remap field/constant names in spec to avoid collision with Python reserved words.
 
@@ -506,13 +504,12 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
                 yield INDENT+'%s = str[start:end]' % (var)
 
 
-def array_serializer_generator(msg_context: MsgSpec, package, type_, name, serialize, is_numpy):  # noqa: D401
+def array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):  # noqa: D401
     """
     Generator for array types.
 
     :raises: :exc:`MsgGenerationException` If array spec is invalid
     """
-
     base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
     if not is_array:
         raise MsgGenerationException('Invalid array spec: %s' % type_)
@@ -646,7 +643,7 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
             # unoptimized code
             # push_context(_serial_context+name+'.')
             for y in serializer_generator(msg_context, make_python_safe(get_registered_ex(msg_context, type_)), serialize, is_numpy):
-                yield  y  # recurs on subtype
+                yield y  # recurs on subtype
             pop_context()
         else:
             # Invalid
@@ -688,7 +685,6 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
             var = _serial_context+f
             yield '%s = bool(%s)' % (var, var)
     
-
 
 def serializer_generator(msg_context, spec, serialize, is_numpy):  # noqa: D401
     """
@@ -748,7 +744,7 @@ def serialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     # #3741: make sure to have sub-messages python safe (ie escape field names a used by python (e.g. def, from, ...))
     flattened = make_python_safe(flatten(msg_context, spec))
     for y in serializer_generator(msg_context, flattened, True, is_numpy):
-        yield INDENT+y
+        yield '  '+y
     pop_context()
     yield "except struct.error as se: self._check_types(struct.error(\"%s: '%s' when writing '%s'\" % (type(se), str(se), str(locals().get('_x', self)))))"
     yield "except TypeError as te: self._check_types(ValueError(\"%s: '%s' when writing '%s'\" % (type(te), str(te), str(locals().get('_x', self)))))"
@@ -766,7 +762,7 @@ def deserialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     yield INDENT+'codecs.lookup_error("rosmsg").msg_type = self._type'
     yield 'try:'
     package = spec.package
-    yield '# Instantiate embedded type classes'
+    # Instantiate embedded type classes
     for type_, name in spec.fields():
         if msg_context.is_registered(type_):
             yield '  if self.%s is None:' % name
@@ -858,15 +854,8 @@ def msg_generator(msg_context, spec, search_path):
     yield '  _full_text: str = """%s"""' % full_text
 
     fields = generate_fields(spec_names, spec.types)
-    field_definitions = list(map(lambda x: x[2], fields))
     # Pass feilds as keyword args to super class. 
     fields_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
-   
-    # TODO I'd perfer not do use the below commented lines since these can be class or instance vars which could be problemeatic
-    # for field in fields:
-    #     spec_name, spec_type, field_definition = field
-    #     yield f'  {field_definition}'
-
     
     if spec.constants:
         yield '  # Pseudo-constants'
@@ -928,7 +917,7 @@ def msg_generator(msg_context, spec, search_path):
 
   def serialize(self, buff: StringIO) -> None:
     \"\"\"
-    serialize message into buffere
+    serialize message into buffer
     :param buff: buffer, ``StringIO``
     \"\"\""""
     for y in serialize_fn_generator(msg_context, spec):
