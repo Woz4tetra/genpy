@@ -23,21 +23,18 @@ PY_TYPE_STRINGS = {
     'duration': 'Tuple[int, int]' 
 }
 
-def generate_fields(spec_names: List[str], spec_types: List[str] ) -> Tuple[List[str], List[str]]:
+def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[str]:
     feild_definitions: List[str] = []
-    optional_feild_definitions: List[str] = []
     for spec_name, spec_type in zip(spec_names, spec_types):
 
-        base_type, is_array, array_length, is_optional = genmsg.msgs.parse_type(spec_type)
+        base_type, is_array, array_length = genmsg.msgs.parse_type(spec_type)
         if len(base_type.split('/')) > 1:
             # base_type = base_type.translate(str.maketrans({'/': '.'}))
             base_type = '.'.join(base_type.split('/')[:-1]) + '.msg.' +  base_type.split('/')[-1]
         
         if base_type in PY_TYPE_STRINGS:
             base_type = PY_TYPE_STRINGS[base_type]
-
-        # TODO verify this handles header types            
-            
+    
         if is_array and array_length:
             format_spec_type_hint = f'Tuple[{", ".join([base_type]*array_length)}]'
         elif is_array:
@@ -45,9 +42,6 @@ def generate_fields(spec_names: List[str], spec_types: List[str] ) -> Tuple[List
         else:
             format_spec_type_hint = base_type
         
-        if is_optional:
-            optional_feild_definitions.append((spec_name, spec_type,f'{spec_name}: Optional[{format_spec_type_hint}]'))
-        else:
-            feild_definitions.append((spec_name, spec_type, f'{spec_name}: {format_spec_type_hint}'))
+        feild_definitions.append((spec_name, spec_type, f'{spec_name}: {format_spec_type_hint}'))
 
-    return (feild_definitions, optional_feild_definitions)
+    return feild_definitions
