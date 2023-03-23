@@ -1,6 +1,6 @@
 from setuptools import setup
 setup(
-    packages='genpy',
+    packages=['genpy'],
     package_dir={'': 'src'},
     requires=['genmsg']
 )
