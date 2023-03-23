@@ -183,12 +183,15 @@ def default_value(msg_context, field_type, default_package):
             return '[]'
         else:
             # fixed-length
+            # Note fixed length arrays are tuples in python
             def_val = default_value(msg_context, base_type, default_package)
             if base_type in [
                 'byte', 'int8', 'int16', 'int32', 'int64', 'uint16', 'uint32',
                 'uint64', 'float32', 'float64', 'string', 'bool'
             ]:  # fill primitive values
-                return '[' + def_val + '] * ' + str(array_len)
+                # Update...
+                # return '[' + def_val + '] * ' + str(array_len)
+                return f'({",".join([def_val] * array_len)})'
             else:  # fill values with distinct instances
                 def_val = default_value(msg_context, base_type, default_package)
                 return '[' + def_val + ' for _ in range(' + str(array_len) + ')]'
