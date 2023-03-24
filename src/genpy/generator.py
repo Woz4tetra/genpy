@@ -888,7 +888,7 @@ def msg_generator(msg_context, spec, search_path):
         yield '  _slot_types: List[str] = []'
 
     yield f"""
-  def __init__(self, {', '.join([f'{spec_name}: {format_spec_type_hint} = None' for spec_name, spec_type, format_spec_type_hint in fields])}):
+  def __init__(self, {', '.join([f'{spec_name}: {format_spec_type_hint}' for spec_name, spec_type, format_spec_type_hint in fields])}):
     \"\"\"
     Constructor. Any message fields that are implicitly/explicitly
     set to None will be assigned a default value. The recommend
