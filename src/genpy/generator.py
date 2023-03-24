@@ -191,7 +191,7 @@ def default_value(msg_context, field_type, default_package):
                 return f'({",".join([def_val] * array_len)})'
             else:  # fill values with distinct instances
                 def_val = default_value(msg_context, base_type, default_package)
-                return '[' + def_val + ' for _ in range(' + str(array_len) + ')]'
+                return '(' + def_val + ' for _ in range(' + str(array_len) + '))'
     else:
         return compute_constructor(msg_context, default_package, field_type)
 
