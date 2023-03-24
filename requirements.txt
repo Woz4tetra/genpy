@@ -5,7 +5,7 @@ catkin-pkg==0.5.2
 distro==1.8.0
 docutils==0.19
 exceptiongroup==1.1.0
-genmsg==0.5.12
+git+https://github.com/Pickle-Robot/genmsg.git/@pickle/no-catkin-build
 iniconfig==1.1.1
 nose==1.3.7
 numpy==1.24.1
