@@ -183,7 +183,6 @@ def default_value(msg_context, field_type, default_package):
             return '[]'
         else:
             # fixed-length
-            # Note fixed length arrays are tuples in python
             def_val = default_value(msg_context, base_type, default_package)
             if base_type in [
                 'byte', 'int8', 'int16', 'int32', 'int64', 'uint16', 'uint32',

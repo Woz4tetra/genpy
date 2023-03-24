@@ -5,7 +5,7 @@ from genpy.base import PY_TYPE_STRINGS
 
 
 def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[Tuple[str, str, str]]:
-    field_definitions: List[Tuple[str, str, str]] = []
+    field_definitions: List[str] = []
     for spec_name, spec_type in zip(spec_names, spec_types):
 
         base_type, is_array, array_length = genmsg.msgs.parse_type(spec_type)
