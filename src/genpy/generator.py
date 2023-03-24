@@ -909,7 +909,7 @@ def msg_generator(msg_context, spec, search_path):
         for field in fields:
             spec_name, spec_type, format_spec_type_hint = field
             yield '    if self.%s is None:' % spec_name
-            yield INDENT*3 + 'self.%s : %s = %s' % (spec_name, format_spec_type_hint, default_value(msg_context, spec_type, spec.package))
+            yield INDENT*3 + 'self.%s: %s = %s' % (spec_name, format_spec_type_hint, default_value(msg_context, spec_type, spec.package))
     yield """
   def _get_types(self):
     \"\"\"
