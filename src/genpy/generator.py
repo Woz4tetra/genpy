@@ -885,7 +885,7 @@ def msg_generator(msg_context, spec, search_path):
         yield '  _slot_types: List[str] = []'
 
     yield f"""
-  def __init__(self, {', '.join([f'{spec_name}: {format_spec_type_hint} = None' for spec_name, spec_type, format_spec_type_hint in fields])}):
+  def __init__(self, {', '.join([f'{spec_name}: {format_spec_type_hint} = {default_value(msg_context, spec_type, spec.package)}' for spec_name, spec_type, format_spec_type_hint in fields])}):
     \"\"\"
     Constructor. Any message fields that are implicitly/explicitly
     set to None will be assigned a default value. The recommend
@@ -900,7 +900,6 @@ def msg_generator(msg_context, spec, search_path):
     to set specific fields.
     \"\"\"
     super({name}, self).__init__(**{fields_dict})"""
-    # ^ TODO the above should use defualt values not = None. LEaving as is for the moment until everything is working
     if len(spec_names):
         yield '    # message fields cannot be None, assign default values for those that are'
 
