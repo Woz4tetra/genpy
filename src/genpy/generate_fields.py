@@ -1,24 +1,8 @@
 from typing import List, Tuple
 import genmsg
+from genpy.base import PY_TYPE_STRINGS
 
 
-# REF https://docs.python.org/3/library/struct.html#format-characters
-PY_TYPE_STRINGS = {
-    'int8': 'int',
-    'uint8': 'int',
-    'uint16': 'int',
-    'int32': 'int',
-    'uint32': 'int', 
-    'int64': 'int',
-    'uint64': 'int',
-    'float32': 'float',
-    'float64': 'float',
-    'string': 'bytes',
-    'bool': 'bool',
-    'char': 'bytes',
-    'time': 'Tuple[int, int]', # See: https://github.com/Pickle-Robot/genmsg/blob/b3c24ea4a75ac494e4f94bf88e8838c71f4280a5/src/genmsg/msgs.py#L326
-    'duration': 'Tuple[int, int]' 
-}
 
 def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[Tuple[str, str, str]]:
     field_definitions: List[Tuple[str, str, str]] = []

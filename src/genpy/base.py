@@ -55,6 +55,25 @@ SIMPLE_TYPES_DICT = {  # see python module struct
 # Simple types are primitives with fixed-serialization length
 SIMPLE_TYPES = list(SIMPLE_TYPES_DICT.keys())  # py3k
 
+# REF https://docs.python.org/3/library/struct.html#format-characters
+PY_TYPE_STRINGS = {
+    'int8': 'int',
+    'uint8': 'int',
+    'uint16': 'int',
+    'int32': 'int',
+    'uint32': 'int', 
+    'int64': 'int',
+    'uint64': 'int',
+    'float32': 'float',
+    'float64': 'float',
+    'string': 'str',
+    'bool': 'bool',
+    'char': 'bytes',
+    'time': 'Tuple[int, int]', # See: https://github.com/Pickle-Robot/genmsg/blob/b3c24ea4a75ac494e4f94bf88e8838c71f4280a5/src/genmsg/msgs.py#L326
+    'duration': 'Tuple[int, int]' 
+}
+
+
 
 def is_simple(type_):
     """

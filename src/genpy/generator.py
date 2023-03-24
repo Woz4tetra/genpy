@@ -461,7 +461,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
 
     # the length generator is a noop if serialize is True as we
     # optimize the serialization call.
-    base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
+    base_type, _, array_len = genmsg.msgs.parse_type(type_)
     # - don't serialize length for fixed-length arrays of bytes
     if base_type not in ['uint8', 'char'] or array_len is None:
         for y in len_serializer_generator(var, True, serialize):
@@ -471,7 +471,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
         # serialize length and string together
 
         # check to see if its a uint8/byte type, in which case we need to convert to string before serializing
-        base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
+        base_type, _, array_len = genmsg.msgs.parse_type(type_)
         if base_type in ['uint8', 'char']:
             yield '# - if encoded as a list instead, serialize as bytes instead of string'
             if array_len is None:
@@ -623,7 +623,7 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
     # brackets, then we check for the 'complex' builtin types (string,
     # time, duration, Header), then we canonicalize it to an embedded
     # message type.
-    base_type, is_array, _ = genmsg.msgs.parse_type(type_)
+    _, is_array, _ = genmsg.msgs.parse_type(type_)
 
     if is_array:
         for y in array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):
