@@ -189,8 +189,6 @@ def default_value(msg_context, field_type, default_package):
                 'byte', 'int8', 'int16', 'int32', 'int64', 'uint16', 'uint32',
                 'uint64', 'float32', 'float64', 'string', 'bool'
             ]:  # fill primitive values
-                # Update...
-                # return '[' + def_val + '] * ' + str(array_len)
                 return f'({",".join([def_val] * array_len)})'
             else:  # fill values with distinct instances
                 def_val = default_value(msg_context, base_type, default_package)
