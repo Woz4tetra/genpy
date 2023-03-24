@@ -903,7 +903,6 @@ def msg_generator(msg_context, spec, search_path):
     to set specific fields.
     \"\"\"
     super({name}, self).__init__(**{fields_dict})"""
-    # ^ TODO the above should use defualt values not = None. LEaving as is for the moment until everything is working
     if len(spec_names):
         yield '    # message fields cannot be None, assign default values for those that are'
 
