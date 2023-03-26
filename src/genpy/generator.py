@@ -84,6 +84,7 @@ from . generate_struct import unpack3
 
 # indent width
 INDENT = '  '
+NEWLINE = '\n'
 
 
 def get_registered_ex(msg_context, type_):
@@ -288,7 +289,7 @@ def compute_constructor(msg_context, package, type_):
         if not msg_context.is_registered('%s/%s' % (base_pkg, base_type_)):
             return None
         else:
-            return '%s.msg.%s()' % (base_pkg, base_type_)
+            return '%s_msg.%s()' % (base_pkg, base_type_)
 
 
 def compute_pkg_type(package, type_):  # noqa: D205, D400
@@ -337,7 +338,7 @@ def compute_import(msg_context, package, type_):
     elif not msg_context.is_registered(full_msg_type):
         retval = []
     else:
-        retval = ['import %s.msg' % pkg]
+        retval = [f'from {pkg} import msg as {pkg}_msg']
         iter_types = get_registered_ex(msg_context, full_msg_type).types
         for t in iter_types:
             assert t != full_msg_type, 'msg [%s] has circular self-dependencies' % (full_msg_type)
@@ -827,7 +828,8 @@ def msg_generator(msg_context, spec, search_path):
     yield 'from io import StringIO'
     yield 'from typing import List, Tuple'
     yield 'python3 = True if sys.hexversion > 0x03000000 else False'
-    yield 'import genpy\nimport struct\n'
+    yield 'import struct'
+    yield 'import genpy'
     import_strs = []
     for t in spec.types:
         import_strs.extend(compute_import(msg_context, spec.package, t))
@@ -885,7 +887,9 @@ def msg_generator(msg_context, spec, search_path):
         yield '  _slot_types: List[str] = []'
 
     yield f"""
-  def __init__(self, {', '.join([f'{spec_name}: {format_spec_type_hint} = {default_value(msg_context, spec_type, spec.package)}' for spec_name, spec_type, format_spec_type_hint in fields])}):
+  def __init__(self, {f',{NEWLINE}{INDENT}{INDENT}'.join(
+    [f'{spec_name}: {format_spec_type_hint} = {default_value(msg_context, spec_type, spec.package)}' 
+                    for spec_name, spec_type, format_spec_type_hint in fields])}):
     \"\"\"
     Constructor. Any message fields that are implicitly/explicitly
     set to None will be assigned a default value. The recommend
