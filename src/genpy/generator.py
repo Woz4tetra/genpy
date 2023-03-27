@@ -742,7 +742,7 @@ def serialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     yield 'try:'
     push_context('self.')
     # NOTE: we flatten the spec for optimal serialization
-    # #3741: make sure to have sub-messages python safe (ie escape field names a used by python (e.g. def, from, ...))
+    # #3741: make sure to have sub-messages python safe (ie escape field names used by python (e.g. def, from, ...))
     flattened = make_python_safe(flatten(msg_context, spec))
     for y in serializer_generator(msg_context, flattened, True, is_numpy):
         yield '  '+y
