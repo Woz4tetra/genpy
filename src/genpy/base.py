@@ -56,6 +56,7 @@ SIMPLE_TYPES_DICT = {  # see python module struct
 SIMPLE_TYPES = list(SIMPLE_TYPES_DICT.keys())  # py3k
 
 # REF https://docs.python.org/3/library/struct.html#format-characters
+# Map of simple ros message tpyes to python types
 PY_TYPE_STRINGS = {
     'int8': 'int',
     'uint8': 'int',
