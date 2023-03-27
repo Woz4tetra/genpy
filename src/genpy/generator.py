@@ -289,7 +289,7 @@ def compute_constructor(msg_context, package, type_):
         if not msg_context.is_registered('%s/%s' % (base_pkg, base_type_)):
             return None
         else:
-            return f'{package}_msg_{base_type_}()'
+            return f'{base_pkg}_msg_{base_type_}()'
 
 
 def compute_pkg_type(package, type_):  # noqa: D205, D400

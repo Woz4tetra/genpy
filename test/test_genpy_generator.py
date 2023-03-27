@@ -150,12 +150,12 @@ def test_default_value():
     assert default_value(msg_context, 'ThreeNums', 'std_msgs') is None
 
     # - registered types
-    assert 'fake_msgs.msg.String()' == default_value(msg_context, 'fake_msgs/String', 'std_msgs')
-    assert 'fake_msgs.msg.String()' == default_value(msg_context, 'fake_msgs/String', 'fake_msgs')
-    assert 'fake_msgs.msg.String()' == default_value(msg_context, 'String', 'fake_msgs')
-    assert 'fake_msgs.msg.ThreeNums()' == default_value(msg_context, 'fake_msgs/ThreeNums', 'roslib')
-    assert 'fake_msgs.msg.ThreeNums()' == default_value(msg_context, 'fake_msgs/ThreeNums', 'fake_msgs')
-    assert 'fake_msgs.msg.ThreeNums()' == default_value(msg_context, 'ThreeNums', 'fake_msgs')
+    assert 'fake_msgs_msg_String()' == default_value(msg_context, 'fake_msgs/String', 'std_msgs')
+    assert 'fake_msgs_msg_String()' == default_value(msg_context, 'fake_msgs/String', 'fake_msgs')
+    assert 'fake_msgs_msg_String()' == default_value(msg_context, 'String', 'fake_msgs')
+    assert 'fake_msgs_msg_ThreeNums()' == default_value(msg_context, 'fake_msgs/ThreeNums', 'roslib')
+    assert 'fake_msgs_msg_ThreeNums()' == default_value(msg_context, 'fake_msgs/ThreeNums', 'fake_msgs')
+    assert 'fake_msgs_msg_ThreeNums()' == default_value(msg_context, 'ThreeNums', 'fake_msgs')
 
     # var-length arrays always default to empty arrays... except for byte and uint8 which are strings
     for t in ['int8', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64']:
@@ -167,17 +167,17 @@ def test_default_value():
 
     # fixed-length arrays should be zero-filled... except for byte and uint8 which are strings
     for t in ['float32', 'float64']:
-        assert '[0.] * 3' == default_value(msg_context, t+'[3]', 'std_msgs')
-        assert '[0.] * 1' == default_value(msg_context, t+'[1]', 'std_msgs')
+        assert '(0.,0.,0.)' == default_value(msg_context, t+'[3]', 'std_msgs')
+        assert '(0.)' == default_value(msg_context, t+'[1]', 'std_msgs')
     for t in ['int8', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64']:
-        assert '[0] * 4' == default_value(msg_context, t+'[4]', 'std_msgs')
-        assert '[0] * 1' == default_value(msg_context, t+'[1]', 'roslib')
+        assert '(0,0,0,0)' == default_value(msg_context, t+'[4]', 'std_msgs')
+        assert '(0)' == default_value(msg_context, t+'[1]', 'roslib')
 
     assert b'\0' == eval(default_value(msg_context, 'uint8[1]', 'roslib'))
     assert b'\0\0\0\0' == eval(default_value(msg_context, 'uint8[4]', 'roslib'))
 
     assert '[]' == default_value(msg_context, 'fake_msgs/String[]', 'std_msgs')
-    assert '[fake_msgs.msg.String() for _ in range(2)]' == default_value(msg_context, 'fake_msgs/String[2]', 'std_msgs')
+    assert 'tuple([fake_msgs_msg_String() for _ in range(2)])' == default_value(msg_context, 'fake_msgs/String[2]', 'std_msgs')
 
 
 def test_make_python_safe():
@@ -273,12 +273,12 @@ def test_compute_constructor():
     assert compute_constructor(msg_context, 'std_msgs', 'ThreeNums') is None
 
     # - registered types
-    assert 'fake_msgs.msg.String()' == compute_constructor(msg_context, 'std_msgs', 'fake_msgs/String')
-    assert 'fake_msgs.msg.String()' == compute_constructor(msg_context, 'fake_msgs', 'fake_msgs/String')
-    assert 'fake_msgs.msg.String()' == compute_constructor(msg_context, 'fake_msgs', 'String')
-    assert 'fake_msgs.msg.ThreeNums()' == compute_constructor(msg_context, 'fake_msgs', 'fake_msgs/ThreeNums')
-    assert 'fake_msgs.msg.ThreeNums()' == compute_constructor(msg_context, 'fake_msgs', 'fake_msgs/ThreeNums')
-    assert 'fake_msgs.msg.ThreeNums()' == compute_constructor(msg_context, 'fake_msgs', 'ThreeNums')
+    assert 'fake_msgs_msg_String()' == compute_constructor(msg_context, 'std_msgs', 'fake_msgs/String')
+    assert 'fake_msgs_msg_String()' == compute_constructor(msg_context, 'fake_msgs', 'fake_msgs/String')
+    assert 'fake_msgs_msg_String()' == compute_constructor(msg_context, 'fake_msgs', 'String')
+    assert 'fake_msgs_msg_ThreeNums()' == compute_constructor(msg_context, 'fake_msgs', 'fake_msgs/ThreeNums')
+    assert 'fake_msgs_msg_ThreeNums()' == compute_constructor(msg_context, 'fake_msgs', 'fake_msgs/ThreeNums')
+    assert 'fake_msgs_msg_ThreeNums()' == compute_constructor(msg_context, 'fake_msgs', 'ThreeNums')
 
 
 def test_len_serializer_generator():
