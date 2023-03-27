@@ -887,8 +887,8 @@ def msg_generator(msg_context, spec, search_path):
 
     yield f"""
   def __init__(self, {f',{NEWLINE}{INDENT}{INDENT}'.join(
-    [f'{spec_name}: {format_spec_type_hint} = {default_value(msg_context, spec_type, spec.package)}' 
-                    for spec_name, spec_type, format_spec_type_hint in fields])}):
+    [f'{spec_name}: {format_spec_type_hint} = None' 
+                    for spec_name, _, format_spec_type_hint in fields])}):
     \"\"\"
     Constructor. Any message fields that are implicitly/explicitly
     set to None will be assigned a default value. The recommend
@@ -905,10 +905,10 @@ def msg_generator(msg_context, spec, search_path):
     super({name}, self).__init__(**{fields_dict})"""
     for field in fields:
         spec_name, spec_type, format_spec_type_hint = field
-        # yield '    if self.%s is None:' % spec_name
-        # yield INDENT*3 + 'self.%s: %s = %s' % (spec_name, format_spec_type_hint, default_value(msg_context, spec_type, spec.package))
-        # yield '    else:'
-        yield INDENT*2 + 'self.%s: %s = %s' % (spec_name, format_spec_type_hint, spec_name)
+        yield '    if self.%s is None:' % spec_name
+        yield INDENT*3 + 'self.%s: %s = %s' % (spec_name, format_spec_type_hint, default_value(msg_context, spec_type, spec.package))
+        yield '    else:'
+        yield INDENT*3 + 'self.%s: %s = %s' % (spec_name, format_spec_type_hint, spec_name)
     yield """
   def _get_types(self):
     \"\"\"
