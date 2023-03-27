@@ -387,6 +387,7 @@ def test_array_serializer_generator_numpy():
 def compare_file(d, filename, result):
     result = '\n'.join(result)
     expected = open(os.path.join(d, filename)).read().strip()
+    print(filename)
     assert result == expected, '\n[%s]\n[%s]' % (result, expected)
 
 
