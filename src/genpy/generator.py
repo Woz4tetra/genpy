@@ -173,7 +173,7 @@ def default_value(msg_context, field_type, default_package):
     elif field_type == 'bool':
         return 'False'
     elif field_type.endswith(']'):  # array type
-        base_type, is_array, array_len = genmsg.msgs.parse_type(field_type)
+        base_type, _, array_len = genmsg.msgs.parse_type(field_type)
         if base_type in ['char', 'uint8']:
             # strings, char[], and uint8s are all optimized to be strings
             if array_len is not None:
@@ -289,7 +289,7 @@ def compute_constructor(msg_context, package, type_):
         if not msg_context.is_registered('%s/%s' % (base_pkg, base_type_)):
             return None
         else:
-            return '%s()' % (base_type_)
+            return f'{package}_msg_{base_type_}()'
 
 
 def compute_pkg_type(package, type_):  # noqa: D205, D400
@@ -338,7 +338,7 @@ def compute_import(msg_context, package, type_):
     elif not msg_context.is_registered(full_msg_type):
         retval = []
     else:
-        retval = [f'from {pkg}.msg._{base_type} import {base_type}']
+        retval = [f'from {pkg}.msg._{base_type} import {base_type} as {pkg}_msg_{base_type}']
         iter_types = get_registered_ex(msg_context, full_msg_type).types
         for t in iter_types:
             assert t != full_msg_type, 'msg [%s] has circular self-dependencies' % (full_msg_type)
