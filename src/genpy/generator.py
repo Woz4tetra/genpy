@@ -903,6 +903,13 @@ def msg_generator(msg_context, spec, search_path):
     to set specific fields.
     \"\"\"
     super({name}, self).__init__(**{fields_dict})"""
+    if len(spec_names):
+        yield '    # message fields cannot be None, assign default values for those that are'
+
+        for field in fields:
+            spec_name, spec_type, format_spec_type_hint = field
+            yield '    if self.%s is None:' % spec_name
+            yield INDENT*3 + 'self.%s: %s = %s' % (spec_name, format_spec_type_hint, default_value(msg_context, spec_type, spec.package))
     yield """
   def _get_types(self):
     \"\"\"
