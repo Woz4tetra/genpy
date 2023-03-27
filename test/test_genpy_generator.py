@@ -223,14 +223,28 @@ def test_compute_import():
 
     msg_context.register('ci5_msgs/Base', MsgSpec(['time'], ['data'], [], 'time data\n', 'ci5_msgs/Base'))
 
-    assert ['import ci_msgs.msg'] == genpy.generator.compute_import(msg_context, 'foo', 'ci_msgs/Base')
-    assert ['import ci_msgs.msg'] == genpy.generator.compute_import(msg_context, 'ci_msgs', 'ci_msgs/Base')
-    assert ['import ci2_msgs.msg', 'import ci_msgs.msg'] == genpy.generator.compute_import(msg_context, 'ci2_msgs', 'ci2_msgs/Base2')
-    assert ['import ci2_msgs.msg', 'import ci_msgs.msg'] == genpy.generator.compute_import(msg_context, 'foo', 'ci2_msgs/Base2')
-    assert ['import ci3_msgs.msg', 'import ci2_msgs.msg', 'import ci_msgs.msg'] == genpy.generator.compute_import(msg_context, 'ci3_msgs', 'ci3_msgs/Base3')
+    assert ['from ci_msgs.msg._Base import Base as ci_msgs_msg_Base'] == genpy.generator.compute_import(msg_context, 'foo', 'ci_msgs/Base')
+    assert ['from ci_msgs.msg._Base import Base as ci_msgs_msg_Base'] == genpy.generator.compute_import(msg_context, 'ci_msgs', 'ci_msgs/Base')
+    assert ['from ci2_msgs.msg._Base2 import Base2 as ci2_msgs_msg_Base2', 'from ci_msgs.msg._Base import Base as ci_msgs_msg_Base'] == genpy.generator.compute_import(msg_context, 'ci2_msgs', 'ci2_msgs/Base2')
+    assert ['from ci2_msgs.msg._Base2 import Base2 as ci2_msgs_msg_Base2', 'from ci_msgs.msg._Base import Base as ci_msgs_msg_Base'] == genpy.generator.compute_import(msg_context, 'foo', 'ci2_msgs/Base2')
+    assert ['from ci3_msgs.msg._Base3 import Base3 as ci3_msgs_msg_Base3',
+            'from ci2_msgs.msg._Base2 import Base2 as ci2_msgs_msg_Base2',
+            'from ci_msgs.msg._Base import Base as ci_msgs_msg_Base'] == genpy.generator.compute_import(msg_context, 'ci3_msgs', 'ci3_msgs/Base3')
 
-    assert {'import ci4_msgs.msg', 'import ci3_msgs.msg', 'import ci2_msgs.msg', 'import ci_msgs.msg'} == set(genpy.generator.compute_import(msg_context, 'foo', 'ci4_msgs/Base4'))
-    assert {'import ci4_msgs.msg', 'import ci3_msgs.msg', 'import ci2_msgs.msg', 'import ci_msgs.msg'} == set(genpy.generator.compute_import(msg_context, 'ci4_msgs', 'ci4_msgs/Base4'))
+
+    # > print(genpy.generator.compute_import(msg_context, 'foo', 'ci4_msgs/Base4'))
+    # ['from ci4_msgs.msg._Base4 import Base4 as ci4_msgs_msg_Base4',
+    #  'from ci2_msgs.msg._Base2 import Base2 as ci2_msgs_msg_Base2',
+    #  'from ci_msgs.msg._Base import Base as ci_msgs_msg_Base',
+    # 'from ci3_msgs.msg._Base3 import Base3 as ci3_msgs_msg_Base3']
+    assert {'import ci4_msgs.msg',
+            'import ci3_msgs.msg',
+            'import ci2_msgs.msg', 
+            'import ci_msgs.msg'} == set(genpy.generator.compute_import(msg_context, 'foo', 'ci4_msgs/Base4'))
+    assert {'import ci4_msgs.msg',
+            'import ci3_msgs.msg',
+            'import ci2_msgs.msg',
+            'import ci_msgs.msg'} == set(genpy.generator.compute_import(msg_context, 'ci4_msgs', 'ci4_msgs/Base4'))
 
     assert ['import ci4_msgs.msg'] == genpy.generator.compute_import(msg_context, 'foo', 'ci4_msgs/Base')
     assert ['import ci4_msgs.msg'] == genpy.generator.compute_import(msg_context, 'ci4_msgs', 'ci4_msgs/Base')
