@@ -59,7 +59,7 @@ SIMPLE_TYPES = list(SIMPLE_TYPES_DICT.keys())  # py3k
 # Map of simple ros message tpyes to python types
 PY_TYPE_STRINGS = {
     'int8': 'int',
-    'uint8': 'int',
+    'uint8': 'bytes',
     'uint16': 'int',
     'int32': 'int',
     'uint32': 'int', 
