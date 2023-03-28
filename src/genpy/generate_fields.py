@@ -15,8 +15,8 @@ def generate_fields(spec_names: List[str], spec_types: List[str] ) -> List[Tuple
         if base_type in PY_TYPE_STRINGS:
             base_type = PY_TYPE_STRINGS[base_type]
         
-        if is_array and base_type != 'unint8' and base_type != 'char':
-            # unint8 and chars are stored in as bytes so they can't be set to a fixed length type
+        if is_array and base_type != 'bytes':
+            # uint8, uint8[], char and char[] are stored in as bytes not lists.
             if array_length:
                 format_spec_type_hint = f'Tuple[{", ".join([base_type]*array_length)}]'
             else:
