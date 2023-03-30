@@ -129,7 +129,7 @@ class Special:
 
 
 _SPECIAL_TYPES = {
-    genmsg.HEADER:   Special('std_msgs.msg._Header.Header()',     None, 'import std_msgs.msg'),
+    # genmsg.HEADER:   Special('std_msgs.msg._Header.Header()',     None, 'from std_msgs.msg._Header import Header'),
     genmsg.TIME:     Special('genpy.Time()',     '%s.canon()', 'import genpy'),
     genmsg.DURATION: Special('genpy.Duration()', '%s.canon()', 'import genpy'),
     }
@@ -835,7 +835,6 @@ def msg_generator(msg_context, spec, search_path):
     import_strs = sorted(set(import_strs))
     for i in import_strs:
         if i:
-            yield('TEST!@#$')
             yield i
 
     yield ''
