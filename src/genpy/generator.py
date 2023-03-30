@@ -835,6 +835,7 @@ def msg_generator(msg_context, spec, search_path):
     import_strs = sorted(set(import_strs))
     for i in import_strs:
         if i:
+            yield('TEST!@#$')
             yield i
 
     yield ''
