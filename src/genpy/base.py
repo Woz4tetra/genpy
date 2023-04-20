@@ -60,6 +60,7 @@ SIMPLE_TYPES = list(SIMPLE_TYPES_DICT.keys())  # py3k
 PY_TYPE_STRINGS = {
     'int8': 'int',
     'uint8': 'bytes',
+    'byte': 'bytes',
     'uint16': 'int',
     'int32': 'int',
     'uint32': 'int', 
