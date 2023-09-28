@@ -860,7 +860,7 @@ def msg_generator(msg_context, spec, search_path):
 
     def get_format_spec_type_hint(spec_name, format_spec_type_hint):
         if f'is_{spec_name}' in spec_names:
-            return 'Optional[{format_spec_type_hint}]'
+            return f'Optional[{format_spec_type_hint}]'
         else:
             return format_spec_type_hint
             
