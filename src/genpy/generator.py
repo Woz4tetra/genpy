@@ -825,7 +825,7 @@ def msg_generator(msg_context, spec, search_path):
     yield 'import codecs'
     yield 'import sys'
     yield 'from io import StringIO'
-    yield 'from typing import List, Tuple'
+    yield 'from typing import List, Tuple, Optional'
     yield 'python3 = True if sys.hexversion > 0x03000000 else False'
     yield 'import struct'
     yield 'import genpy'
@@ -857,7 +857,13 @@ def msg_generator(msg_context, spec, search_path):
     fields = generate_fields(spec_names, spec.types)
     # Pass feilds as keyword args to super class. 
     fields_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
-    
+
+    def get_format_spec_type_hint(spec_name, format_spec_type_hint):
+        if f'is_{spec_name}' in spec_names:
+            return 'Optional[{format_spec_type_hint}]'
+        else:
+            return format_spec_type_hint
+            
     if spec.constants:
         yield '  # Pseudo-constants'
         for c in spec.constants:
@@ -887,7 +893,7 @@ def msg_generator(msg_context, spec, search_path):
 
     yield f"""
   def __init__(self, {f',{NEWLINE}{INDENT}{INDENT}'.join(
-    [f'{spec_name}: {format_spec_type_hint} = None' 
+    [f'{spec_name}: {get_format_spec_type_hint(spec_name, format_spec_type_hint)} = None' 
                     for spec_name, _, format_spec_type_hint in fields])}):
     \"\"\"
     Constructor. Any message fields that are implicitly/explicitly
