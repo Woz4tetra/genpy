@@ -928,7 +928,7 @@ def msg_generator(msg_context, spec, search_path):
     :param buff: buffer, ``StringIO``
     \"\"\""""
     for y in serialize_fn_generator(msg_context, spec):
-        yield '    ' + f'{spec.name}, {spec.type} '
+        yield '    ' + f'{spec}'
         yield '    ' + y
     yield """
   def deserialize(self, str: str) -> \'%s\':
