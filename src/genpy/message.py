@@ -397,7 +397,7 @@ class Message(object):
         """
         Serialize data into buffer.
 
-        :param buff: buffer, ``StringIO``
+        :param buff: buffer, ``BytesIO``
         """
         pass
 
