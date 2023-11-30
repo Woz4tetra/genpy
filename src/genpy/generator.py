@@ -435,7 +435,7 @@ def len_serializer_generator(var, is_string, serialize):  # noqa: D401
     else:
         yield 'start = end'
         yield 'end += 4'
-        yield int32_unpack('length', 'str[start:end]')  # 4 = struct.calcsize('<i')
+        yield int32_unpack('length', 'bytes_[start:end]')  # 4 = struct.calcsize('<i')
 
 
 def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
@@ -493,16 +493,16 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
         yield 'start = end'
         if array_len is not None:
             yield 'end += %s' % array_len
-            yield '%s = str[start:end]' % var
+            yield '%s = bytes_[start:end]' % var
         else:
             yield 'end += length'
             if base_type in ['uint8', 'char']:
-                yield '%s = str[start:end]' % (var)
+                yield '%s = bytes_[start:end]' % (var)
             else:
                 yield 'if python3:'
-                yield INDENT+"%s = str[start:end].decode('utf-8', 'rosmsg')" % (var)  # If messages are python3-decode back to unicode
+                yield INDENT+"%s = bytes_[start:end].decode('utf-8', 'rosmsg')" % (var)  # If messages are python3-decode back to unicode
                 yield 'else:'
-                yield INDENT+'%s = str[start:end]' % (var)
+                yield INDENT+'%s = bytes_[start:end]' % (var)
 
 
 def array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):  # noqa: D401
@@ -548,9 +548,9 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
                 yield 'end += s.size'
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
-                    yield unpack_numpy(var, 'length', dtype, 'str[start:end]')
+                    yield unpack_numpy(var, 'length', dtype, 'bytes_[start:end]')
                 else:
-                    yield unpack3(var, 's', 'str[start:end]')
+                    yield unpack3(var, 's', 'bytes_[start:end]')
         else:
             pattern = '%s%s' % (length, compute_struct_pattern([base_type]))
             if serialize:
@@ -563,9 +563,9 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
                 yield 'end += %s' % struct.calcsize('<%s' % pattern)
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
-                    yield unpack_numpy(var, length, dtype, 'str[start:end]')
+                    yield unpack_numpy(var, length, dtype, 'bytes_[start:end]')
                 else:
-                    yield unpack(var, pattern, 'str[start:end]')
+                    yield unpack(var, pattern, 'bytes_[start:end]')
         if not serialize and base_type == 'bool':
             # convert uint8 to bool
             if base_type == 'bool':
@@ -675,7 +675,7 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
     else:
         yield 'start = end'
         yield 'end += %s' % struct.calcsize('<%s' % reduce_pattern(pattern))
-        yield unpack('(%s,)' % vars_, pattern, 'str[start:end]')
+        yield unpack('(%s,)' % vars_, pattern, 'bytes_[start:end]')
 
         # convert uint8 to bool. this doesn't add much value as Python
         # equality test on a field will return that True == 1, but I
