@@ -71,8 +71,8 @@ PY_TYPE_STRINGS = {
     'string': 'str',
     'bool': 'bool',
     'char': 'bytes',
-    'time': 'Tuple[int, int]', # See: https://github.com/Pickle-Robot/genmsg/blob/b3c24ea4a75ac494e4f94bf88e8838c71f4280a5/src/genmsg/msgs.py#L326
-    'duration': 'Tuple[int, int]' 
+    'time': 'genpy.Time', # See: https://github.com/Pickle-Robot/genmsg/blob/b3c24ea4a75ac494e4f94bf88e8838c71f4280a5/src/genmsg/msgs.py#L326
+    'duration': 'genpy.Time' 
 }
 
 
