@@ -66,7 +66,6 @@ from genmsg.base import log
 
 from . base import SIMPLE_TYPES  # noqa: F401
 from . base import is_simple
-from . generate_fields import generate_fields
 from . generate_numpy import NUMPY_DTYPE
 from . generate_numpy import pack_numpy
 from . generate_numpy import unpack_numpy
@@ -84,7 +83,6 @@ from . generate_struct import unpack3
 
 # indent width
 INDENT = '  '
-NEWLINE = '\n'
 
 
 def get_registered_ex(msg_context, type_):
@@ -129,7 +127,7 @@ class Special:
 
 
 _SPECIAL_TYPES = {
-    genmsg.HEADER:   Special('std_msgs.msg._Header.Header()',     None, 'from std_msgs.msg._Header import Header as std_msgs_msg_Header'),
+    genmsg.HEADER:   Special('std_msgs.msg._Header.Header()',     None, 'import std_msgs.msg'),
     genmsg.TIME:     Special('genpy.Time()',     '%s.canon()', 'import genpy'),
     genmsg.DURATION: Special('genpy.Duration()', '%s.canon()', 'import genpy'),
     }
@@ -173,7 +171,7 @@ def default_value(msg_context, field_type, default_package):
     elif field_type == 'bool':
         return 'False'
     elif field_type.endswith(']'):  # array type
-        base_type, _, array_len = genmsg.msgs.parse_type(field_type)
+        base_type, is_array, array_len = genmsg.msgs.parse_type(field_type)
         if base_type in ['char', 'uint8']:
             # strings, char[], and uint8s are all optimized to be strings
             if array_len is not None:
@@ -189,10 +187,10 @@ def default_value(msg_context, field_type, default_package):
                 'byte', 'int8', 'int16', 'int32', 'int64', 'uint16', 'uint32',
                 'uint64', 'float32', 'float64', 'string', 'bool'
             ]:  # fill primitive values
-                return f'({",".join([def_val] * array_len)})'
+                return '[' + def_val + '] * ' + str(array_len)
             else:  # fill values with distinct instances
                 def_val = default_value(msg_context, base_type, default_package)
-                return 'tuple([' + def_val + ' for _ in range(' + str(array_len) + ')])'
+                return '[' + def_val + ' for _ in range(' + str(array_len) + ')]'
     else:
         return compute_constructor(msg_context, default_package, field_type)
 
@@ -289,7 +287,7 @@ def compute_constructor(msg_context, package, type_):
         if not msg_context.is_registered('%s/%s' % (base_pkg, base_type_)):
             return None
         else:
-            return f'{base_pkg}_msg_{base_type_}()'
+            return '%s.msg.%s()' % (base_pkg, base_type_)
 
 
 def compute_pkg_type(package, type_):  # noqa: D205, D400
@@ -338,7 +336,7 @@ def compute_import(msg_context, package, type_):
     elif not msg_context.is_registered(full_msg_type):
         retval = []
     else:
-        retval = [f'from {pkg}.msg._{base_type} import {base_type} as {pkg}_msg_{base_type}']
+        retval = ['import %s.msg' % pkg]
         iter_types = get_registered_ex(msg_context, full_msg_type).types
         for t in iter_types:
             assert t != full_msg_type, 'msg [%s] has circular self-dependencies' % (full_msg_type)
@@ -435,7 +433,7 @@ def len_serializer_generator(var, is_string, serialize):  # noqa: D401
     else:
         yield 'start = end'
         yield 'end += 4'
-        yield int32_unpack('length', 'bytes_[start:end]')  # 4 = struct.calcsize('<i')
+        yield int32_unpack('length', 'str[start:end]')  # 4 = struct.calcsize('<i')
 
 
 def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
@@ -459,7 +457,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
 
     # the length generator is a noop if serialize is True as we
     # optimize the serialization call.
-    base_type, _, array_len = genmsg.msgs.parse_type(type_)
+    base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
     # - don't serialize length for fixed-length arrays of bytes
     if base_type not in ['uint8', 'char'] or array_len is None:
         for y in len_serializer_generator(var, True, serialize):
@@ -469,7 +467,7 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
         # serialize length and string together
 
         # check to see if its a uint8/byte type, in which case we need to convert to string before serializing
-        base_type, _, array_len = genmsg.msgs.parse_type(type_)
+        base_type, is_array, array_len = genmsg.msgs.parse_type(type_)
         if base_type in ['uint8', 'char']:
             yield '# - if encoded as a list instead, serialize as bytes instead of string'
             if array_len is None:
@@ -493,16 +491,16 @@ def string_serializer_generator(package, type_, name, serialize):  # noqa: D401
         yield 'start = end'
         if array_len is not None:
             yield 'end += %s' % array_len
-            yield '%s = bytes_[start:end]' % var
+            yield '%s = str[start:end]' % var
         else:
             yield 'end += length'
             if base_type in ['uint8', 'char']:
-                yield '%s = bytes_[start:end]' % (var)
+                yield '%s = str[start:end]' % (var)
             else:
                 yield 'if python3:'
-                yield INDENT+"%s = bytes_[start:end].decode('utf-8', 'rosmsg')" % (var)  # If messages are python3-decode back to unicode
+                yield INDENT+"%s = str[start:end].decode('utf-8', 'rosmsg')" % (var)  # If messages are python3-decode back to unicode
                 yield 'else:'
-                yield INDENT+'%s = bytes_[start:end]' % (var)
+                yield INDENT+'%s = str[start:end]' % (var)
 
 
 def array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):  # noqa: D401
@@ -548,9 +546,9 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
                 yield 'end += s.size'
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
-                    yield unpack_numpy(var, 'length', dtype, 'bytes_[start:end]')
+                    yield unpack_numpy(var, 'length', dtype, 'str[start:end]')
                 else:
-                    yield unpack3(var, 's', 'bytes_[start:end]')
+                    yield unpack3(var, 's', 'str[start:end]')
         else:
             pattern = '%s%s' % (length, compute_struct_pattern([base_type]))
             if serialize:
@@ -563,9 +561,9 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
                 yield 'end += %s' % struct.calcsize('<%s' % pattern)
                 if is_numpy:
                     dtype = NUMPY_DTYPE[base_type]
-                    yield unpack_numpy(var, length, dtype, 'bytes_[start:end]')
+                    yield unpack_numpy(var, length, dtype, 'str[start:end]')
                 else:
-                    yield unpack(var, pattern, 'bytes_[start:end]')
+                    yield unpack(var, pattern, 'str[start:end]')
         if not serialize and base_type == 'bool':
             # convert uint8 to bool
             if base_type == 'bool':
@@ -623,6 +621,7 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
     # message type.
     _, is_array, _ = genmsg.msgs.parse_type(type_)
 
+    # Array
     if is_array:
         for y in array_serializer_generator(msg_context, package, type_, name, serialize, is_numpy):
             yield y
@@ -675,7 +674,7 @@ def simple_serializer_generator(msg_context, spec, start, end, serialize):  # no
     else:
         yield 'start = end'
         yield 'end += %s' % struct.calcsize('<%s' % reduce_pattern(pattern))
-        yield unpack('(%s,)' % vars_, pattern, 'bytes_[start:end]')
+        yield unpack('(%s,)' % vars_, pattern, 'str[start:end]')
 
         # convert uint8 to bool. this doesn't add much value as Python
         # equality test on a field will return that True == 1, but I
@@ -742,7 +741,7 @@ def serialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     yield 'try:'
     push_context('self.')
     # NOTE: we flatten the spec for optimal serialization
-    # #3741: make sure to have sub-messages python safe (ie escape field names used by python (e.g. def, from, ...))
+    # #3741: make sure to have sub-messages python safe
     flattened = make_python_safe(flatten(msg_context, spec))
     for y in serializer_generator(msg_context, flattened, True, is_numpy):
         yield '  '+y
@@ -775,7 +774,6 @@ def deserialize_fn_generator(msg_context, spec, is_numpy=False):  # noqa: D401
     # NOTE: we flatten the spec for optimal serialization
     # #3741: make sure to have sub-messages python safe
     flattened = make_python_safe(flatten(msg_context, spec))
-    # The false flag tells us to deserialize
     for y in serializer_generator(msg_context, flattened, False, is_numpy):
         yield '  '+y
     pop_context()
@@ -824,11 +822,8 @@ def msg_generator(msg_context, spec, search_path):
     yield '"""autogenerated by genpy from %s.msg. Do not edit."""' % spec.full_name
     yield 'import codecs'
     yield 'import sys'
-    yield 'from io import BytesIO'
-    yield 'from typing import List, Tuple, Optional'
     yield 'python3 = True if sys.hexversion > 0x03000000 else False'
-    yield 'import struct'
-    yield 'import genpy'
+    yield 'import genpy\nimport struct\n'
     import_strs = []
     for t in spec.types:
         import_strs.extend(compute_import(msg_context, spec.package, t))
@@ -843,27 +838,17 @@ def msg_generator(msg_context, spec, search_path):
     name = spec.short_name
 
     # Yield data class first, e.g. Point2D
-    yield f'class {spec.short_name}(genpy.Message):'
-    yield '  _md5sum: str = "%s"' % (md5sum)
-    yield '  _type: str = "%s"' % (fulltype)
-    yield '  _has_header: bool = %s  # flag to mark the presence of a Header object' % spec.has_header()
+    yield 'class %s(genpy.Message):' % spec.short_name
+    yield '  _md5sum = "%s"' % (md5sum)
+    yield '  _type = "%s"' % (fulltype)
+    yield '  _has_header = %s  # flag to mark the presence of a Header object' % spec.has_header()
 
     full_text = compute_full_text_escaped(msg_context, spec)
     # escape trailing double-quote, unless already escaped, before wrapping in """
     if full_text.endswith('"') and not full_text.endswith(r'\"'):
         full_text = full_text[:-1] + r'\"'
-    yield '  _full_text: str = """%s"""' % full_text
+    yield '  _full_text = """%s"""' % full_text
 
-    fields = generate_fields(spec_names, spec.types)
-    # Pass feilds as keyword args to super class. 
-    fields_dict = '{' + ', '.join([f"'{spec_name}': {spec_name}" for spec_name in spec_names]) + '}'
-
-    def get_format_spec_type_hint(spec_name, format_spec_type_hint):
-        if f'is_{spec_name}' in spec_names:
-            return f'Optional[{format_spec_type_hint}]'
-        else:
-            return format_spec_type_hint
-            
     if spec.constants:
         yield '  # Pseudo-constants'
         for c in spec.constants:
@@ -885,16 +870,14 @@ def msg_generator(msg_context, spec, search_path):
         yield ''
 
     if len(spec_names):
-        yield "  __slots__: List[str] = ['"+"','".join(spec_names)+"']"
-        yield "  _slot_types: List[str] = ['"+"','".join(spec.types)+"']"
+        yield "  __slots__ = ['"+"','".join(spec_names)+"']"
+        yield "  _slot_types = ['"+"','".join(spec.types)+"']"
     else:
-        yield '  __slots__: List[str] = []'
-        yield '  _slot_types: List[str] = []'
+        yield '  __slots__ = []'
+        yield '  _slot_types = []'
 
-    yield f"""
-  def __init__(self, {f',{NEWLINE}{INDENT}{INDENT}'.join(
-    [f'{spec_name}: {get_format_spec_type_hint(spec_name, format_spec_type_hint)} = None' 
-                    for spec_name, _, format_spec_type_hint in fields])}):
+    yield """
+  def __init__(self, *args, **kwds):
     \"\"\"
     Constructor. Any message fields that are implicitly/explicitly
     set to None will be assigned a default value. The recommend
@@ -902,20 +885,25 @@ def msg_generator(msg_context, spec, search_path):
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-      {','.join(spec_names)}
+       %s
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
     to set specific fields.
     \"\"\"
-    super({name}, self).__init__(**{fields_dict})"""
-    for field in fields:
-        spec_name, spec_type, format_spec_type_hint = field
-        yield '    if self.%s is None:' % spec_name
-        # Type the default values since for arrays the type will become List[any] when we assign the value to be []
-        yield INDENT*3 + 'self.%s: %s = %s' % (spec_name, get_format_spec_type_hint(spec_name, format_spec_type_hint), default_value(msg_context, spec_type, spec.package))
+    if args or kwds:
+      super(%s, self).__init__(*args, **kwds)""" % (','.join(spec_names), name)
+
+    if len(spec_names):
+        yield '      # message fields cannot be None, assign default values for those that are'
+        for (t, s) in zip(spec.types, spec_names):
+            yield '      if self.%s is None:' % s
+            yield '        self.%s = %s' % (s, default_value(msg_context, t, spec.package))
+    if len(spec_names) > 0:
         yield '    else:'
-        yield INDENT*3 + 'self.%s = %s' % (spec_name, spec_name)
+        for (t, s) in zip(spec.types, spec_names):
+            yield '      self.%s = %s' % (s, default_value(msg_context, t, spec.package))
+
     yield """
   def _get_types(self):
     \"\"\"
@@ -923,19 +911,19 @@ def msg_generator(msg_context, spec, search_path):
     \"\"\"
     return self._slot_types
 
-  def serialize(self, buff: BytesIO) -> None:
+  def serialize(self, buff):
     \"\"\"
     serialize message into buffer
-    :param buff: buffer, ``BytesIO``
+    :param buff: buffer, ``StringIO``
     \"\"\""""
     for y in serialize_fn_generator(msg_context, spec):
         yield '    ' + y
     yield """
-  def deserialize(self, bytes_: bytes) -> \'%s\':
+  def deserialize(self, str):
     \"\"\"
     unpack serialized message in str into this message instance
-    :param bytes_: byte array of serialized message, ``bytes``
-    \"\"\"""" %  spec.short_name
+    :param str: byte array of serialized message, ``str``
+    \"\"\""""
     for y in deserialize_fn_generator(msg_context, spec):
         yield '    ' + y
     yield ''
@@ -944,7 +932,7 @@ def msg_generator(msg_context, spec, search_path):
   def serialize_numpy(self, buff, numpy):
     \"\"\"
     serialize message with numpy array types into buffer
-    :param buff: buffer, ``BytesIO``
+    :param buff: buffer, ``StringIO``
     :param numpy: numpy python module
     \"\"\""""
     for y in serialize_fn_generator(msg_context, spec, is_numpy=True):
